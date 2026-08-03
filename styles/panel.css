@@ -1,5 +1,11 @@
+#bar {
+  padding: 0;
+  margin: 0;
+}
+
 #panel {
-  background-color: alpha(#fff, 0.07);
+  /* macOS Tahoe style: fully transparent menu bar */
+  background-color: transparent;
 
   /* border-bottom: 1px solid alpha(#010101, 0.025); */
   margin-top: -4px;
@@ -7,10 +13,19 @@
   transition: all 120ms ease-in-out;
 }
 
+/* Subtle shadow keeps text/icons legible over bright wallpapers */
+#panel label {
+  text-shadow: 0 1px 2px alpha(#000, 0.35);
+}
+
+#panel image {
+  -gtk-icon-shadow: 0 1px 2px alpha(#000, 0.35);
+}
+
 #panel-icon {
   font-size: 18px;
 }
-#global-title-button {
+#menubar #global-title-button label {
   font-weight: bold;
 }
 
@@ -24,13 +39,27 @@
   background-color: alpha(#fff, 0.1);
 }
 
+/* Apple logo: rounded hitbox, extra horizontal room */
+#modules-left #panel-button {
+  border-radius: 6px;
+  padding: 0 7px;
+  margin: 0;
+}
+
 #menubar {
   margin: 4px 0;
 }
 
+/* Wider horizontal hitboxes for the global menu buttons */
+#menubar .button {
+  padding-left: 10px;
+  padding-right: 10px;
+  margin: 0;
+}
+
 #menubar label {
   font-size: 13px;
-  /* font-weight: 400; */
+  font-weight: 500;
 }
 #battery-label {
   font-weight: 500;
@@ -88,6 +117,10 @@
   padding: 3px 0;
 }
 
+#modules-left {
+  margin-left: 8px;
+}
+
 .button {
   border-radius: 5px;
   padding: 0 5px;
@@ -110,13 +143,13 @@
 }
 
 #workspaces label {
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
   color: white; /* fully transparent text */
 }
 #workspaces > button {
   padding-top: 0px;
   padding-right: 16px;
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
   padding-left: 16px;
 
   margin: 6px 0px;
@@ -136,7 +169,7 @@
 
 #workspaces > button.active label {
   color: alpha(#000, 1);
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
 }
 #workspaces > button.urgent {
   background-color: alpha(var(--on-error), 0.7);

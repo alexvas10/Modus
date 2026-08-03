@@ -55,15 +55,20 @@ class AppBar(Box):
         self.pinned_apps_container = Box()
         self.add(self.pinned_apps_container)
 
-        self.separator = Box(
-            v_align="center", style_classes=["hidden", "dock_separator"]
-        )
-        self.add(self.separator)
-
         self.running_apps_container = Box(name="dock_container")
         self.add(self.running_apps_container)
 
+        self.separator = Box(
+            v_align="center", style_classes=["dock_separator"]
+        )
+        self.add(self.separator)
+
+        self.trash_container = Box()
+        self.add(self.trash_container)
+
         self._populate_pinned_apps()
+        self._create_home_button()
+        self._create_trash_button()
         self.setup_app_monitoring()
 
     def setup_app_monitoring(self):
@@ -91,9 +96,6 @@ class AppBar(Box):
 
         for app_data in self.pinned_apps:
             self._create_pinned_button(app_data, desktop_apps)
-
-        # Add trash icon at the end of pinned apps
-        self._create_trash_button()
 
     def _create_pinned_button(self, app_data, desktop_apps):
         if isinstance(app_data, dict):
@@ -149,6 +151,52 @@ class AppBar(Box):
         self.pinned_apps_container.add(pinned_button)
         self.pinned_items_pos.append(pinned_button)
 
+    def _create_home_button(self):
+        """Create a home folder button that opens the home directory in superfile"""
+        home_icon_pixbuf = self.icon_resolver.get_icon_pixbuf(
+            "folder", data.DOCK_ICON_SIZE
+        )
+
+        home_image = Image(name="dock_item_icon")
+        home_image.set_from_pixbuf(home_icon_pixbuf)
+
+        main_container = Box(
+            name="dock_item_main_container",
+            orientation="v",
+            children=[home_image],
+        )
+
+        home_button = Button(
+            name="dock_item",
+            child=main_container,
+            tooltip_text="Home",
+            on_button_press_event=lambda _, event: self._handle_home_click(event),
+            on_enter_notify_event=lambda *_: self._handle_item_hovered(
+                home_button, True
+            ),
+            on_leave_notify_event=lambda *_: self._handle_item_unhovered(
+                home_button, True
+            ),
+        )
+
+        home_button.add_style_class("shown")
+        home_button.is_trash = True
+
+        self.pinned_buttons["home"] = home_button
+        self.trash_container.add(home_button)
+        self.pinned_items_pos.append(home_button)
+
+    def _handle_home_click(self, event):
+        """Handle home button click to open the home directory in superfile"""
+        if event.button == 1:  # Left click
+            try:
+                subprocess.Popen(
+                    [*data.TERMINAL_COMMAND.split(), "spf", os.path.expanduser("~")],
+                    start_new_session=True,
+                )
+            except Exception as e:
+                logger.error(f"[AppBar] Error opening home folder: {e}")
+
     def _create_trash_button(self):
         """Create a trash button that opens the trash in file manager"""
         # Get trash icon
@@ -182,7 +230,7 @@ class AppBar(Box):
         trash_button.is_trash = True
 
         self.pinned_buttons["trash"] = trash_button
-        self.pinned_apps_container.add(trash_button)
+        self.trash_container.add(trash_button)
         self.pinned_items_pos.append(trash_button)
 
     def _find_desktop_app_from_data(self, app_data: dict, desktop_apps):
@@ -283,29 +331,14 @@ class AppBar(Box):
             self.menu.popup_at_pointer(event)
 
     def _handle_trash_click(self, event):
-        """Handle trash button click to open trash in file manager"""
+        """Handle trash button click to open trash in superfile"""
         if event.button == 1:  # Left click
             try:
                 trash_path = os.path.expanduser("~/.local/share/Trash/files")
-                file_managers = [
-                    "nautilus",
-                    "dolphin",
-                    "thunar",
-                    "nemo",
-                    "caja",
-                    "pcmanfm",
-                ]
-
-                for fm in file_managers:
-                    try:
-                        result = subprocess.run(
-                            ["which", fm], capture_output=True, text=True
-                        )
-                        if result.returncode == 0:
-                            subprocess.Popen([fm, trash_path])
-                            return
-                    except Exception:
-                        continue
+                subprocess.Popen(
+                    [*data.TERMINAL_COMMAND.split(), "spf", trash_path],
+                    start_new_session=True,
+                )
             except Exception as e:
                 logger.error(f"[AppBar] Error opening trash: {e}")
 
@@ -565,23 +598,33 @@ class AppBar(Box):
                 except Exception as e:
                     logger.warning(f"[AppBar] Error during cleanup: {e}")
 
+    def _resolve_instance_icon(self, app_class):
+        """Returns (pixbuf, resolved) where resolved is False if we had to
+        fall back to a generic placeholder icon (e.g. due to a transient
+        icon-theme lookup failure, such as during a monitor switch)."""
+        desktop_apps = get_desktop_applications(include_hidden=False)
+        desktop_app = self._find_desktop_app_by_id(app_class, desktop_apps)
+
+        if desktop_app:
+            pixbuf = desktop_app.get_icon_pixbuf(data.DOCK_ICON_SIZE)
+            resolved = bool(desktop_app.icon_name) and desktop_app.icon_name != "image-missing"
+        else:
+            icon_name = self.icon_resolver.get_icon_name(app_class)
+            pixbuf = self.icon_resolver.get_icon_pixbuf(app_class, data.DOCK_ICON_SIZE)
+            resolved = icon_name != self.icon_resolver.default_applicaiton_icon
+
+        return pixbuf, resolved
+
     def create_instance_button(self, instance_address, client, app_class):
         try:
             client_image = Image(name="dock_item_icon")
+            icon_resolved = True
 
             try:
-                desktop_apps = get_desktop_applications(include_hidden=False)
-                desktop_app = self._find_desktop_app_by_id(app_class, desktop_apps)
-
-                if desktop_app:
-                    pixbuf = desktop_app.get_icon_pixbuf(data.DOCK_ICON_SIZE)
-                else:
-                    pixbuf = self.icon_resolver.get_icon_pixbuf(
-                        app_class, data.DOCK_ICON_SIZE
-                    )
-
+                pixbuf, icon_resolved = self._resolve_instance_icon(app_class)
                 client_image.set_from_pixbuf(pixbuf)
             except Exception as e:
+                icon_resolved = False
                 logger.warning(f"[AppBar] Could not load icon for {app_class}: {e}")
 
             workspace_id = self._get_workspace_id(client)
@@ -628,6 +671,8 @@ class AppBar(Box):
             client_button.client_data = client
             client_button.app_class = app_class
             client_button.workspace_label = workspace_label
+            client_button.icon_image = client_image
+            client_button.icon_resolved = icon_resolved
             client_button.add_style_class("shown")
 
             self.client_buttons[instance_address] = client_button
@@ -665,6 +710,17 @@ class AppBar(Box):
         button = self.client_buttons[instance_address]
         button.client_data = client
         button.app_class = app_class
+
+        if not getattr(button, "icon_resolved", True):
+            icon_image = getattr(button, "icon_image", None)
+            if icon_image is not None:
+                try:
+                    pixbuf, resolved = self._resolve_instance_icon(app_class)
+                    if resolved:
+                        icon_image.set_from_pixbuf(pixbuf)
+                        button.icon_resolved = True
+                except Exception as e:
+                    logger.warning(f"[AppBar] Retry icon load failed for {app_class}: {e}")
 
         tooltip_text = client.get("title", app_class)
         if tooltip_text != app_class:
@@ -726,31 +782,26 @@ class AppBar(Box):
         )
 
     def _update_separator_visibility(self):
-        has_pinned_apps = len(self.pinned_items_pos) > 0
-        has_running_apps = len(self.running_items_pos) > 0
-        if has_pinned_apps and has_running_apps:
-            self.separator.remove_style_class("hidden")
-        else:
-            self.separator.add_style_class("hidden")
+        pass
 
 
 class Dock(Window):
-    def __init__(self):
+    def __init__(self, monitor=None):
         if not data.DOCK_ENABLED:
             anchor = self._get_anchor_from_position()
-            super().__init__(layer="top", title="dock", anchor=anchor)
+            super().__init__(layer="top", title="dock", anchor=anchor, monitor=monitor)
             self.children = Box()  # Empty dock if disabled
             return
 
         anchor = self._get_anchor_from_position()
-        super().__init__(layer="top", anchor=anchor)
+        super().__init__(layer="top", anchor=anchor, monitor=monitor, exclusivity="auto")
 
         self.app_bar = AppBar(self)
 
         transition_type = self._get_transition_type()
 
         self.revealer = Revealer(
-            child=Box(children=[self.app_bar], style="padding: 20px 50px 5px 50px;"),
+            child=Box(children=[self.app_bar], style="padding: 0px 50px 0px 50px;"),
             transition_duration=200,
             transition_type=transition_type,
         )

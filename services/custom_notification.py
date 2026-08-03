@@ -244,7 +244,10 @@ class CachedNotifications(Notifications):
 
         max_cache_id = 0
         for notification in data:
-            cached_notification = CachedNotification.create_from_dict(notification)
+            try:
+                cached_notification = CachedNotification.create_from_dict(notification)
+            except (KeyError, Exception):
+                continue
             cache_id = cached_notification.cache_id
             max_cache_id = max(max_cache_id, cache_id)
             

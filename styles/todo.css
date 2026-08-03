@@ -21,7 +21,7 @@
 
 #todo-title {
   font-size: 16px;
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
   font-weight: bold;
   color: #ffffff;
 }
@@ -50,7 +50,7 @@
   padding: 8px 12px;
   color: #ffffff;
   font-size: 13px;
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
 }
 
 #new-todo-entry:focus {
@@ -134,14 +134,14 @@
   font-size: 13px;
   font-weight: 400;
   color: #ffffff;
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
 }
 
 #todo-date {
   font-size: 10px;
   font-weight: 400;
   color: #999999;
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
   margin-top: 2px;
   opacity: 0.8;
 }
@@ -158,7 +158,7 @@
   padding: 4px 8px;
   color: #ffffff;
   font-size: 14px;
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
 }
 
 #todo-text-entry:focus {
@@ -201,7 +201,7 @@
   color: #999;
   font-size: 12px;
   font-weight: 500;
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
   margin-top: 8px;
   transition: background-color 0.2s ease;
 }

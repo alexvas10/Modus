@@ -1,7 +1,7 @@
 #dock {
   background-color: alpha(#fff, 0.07);
   padding: 4px 4px;
-  margin: 4px 4px;
+  margin: 4px 4px 0px 4px;
   border: none;
   border-radius: 16px;
   transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
@@ -16,11 +16,11 @@
 }
 
 #dock_item.shown:hover #dock_item_main_container {
-  margin-top: -12px;
+  margin-top: 0px;
 }
 
 #dock_item.shown.semi_hovered #dock_item_main_container {
-  margin-top: -7px;
+  margin-top: 0px;
 }
 /**/
 /* #dock_item.shown.semi_hovered #dock_item_indicator { */
@@ -81,7 +81,7 @@
   min-height: 50px;
   margin: 0px 4px;
   border-radius: 2px;
-  background-color: #2b5ea7;
+  background-color: #ffffff;
 }
 
 .dock_separator.hidden {

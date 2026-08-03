@@ -12,7 +12,9 @@ from widgets.wayland import WaylandWindow as Window
 class MouseCapture(Window):
     """A background overlay that captures outside clicks without blocking child window interactions"""
 
-    def __init__(self, layer: str, child_window: Window, **kwargs):
+    def __init__(
+        self, layer: str, child_window: Window, cover_panel: bool = True, **kwargs
+    ):
         super().__init__(
             layer="top",  # Use top layer to capture events
             anchor="top bottom left right",
@@ -25,7 +27,9 @@ class MouseCapture(Window):
             **kwargs,
         )
 
-        GtkLayerShell.set_exclusive_zone(self, -1)
+        # cover_panel=False leaves the panel's exclusive zone uncovered so the
+        # menubar keeps receiving hover/click events while a dropdown is open
+        GtkLayerShell.set_exclusive_zone(self, -1 if cover_panel else 0)
 
         self.child_window = child_window
 

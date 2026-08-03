@@ -1,4 +1,7 @@
 import setproctitle
+import dbus.mainloop.glib
+dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
 from fabric import Application
 from fabric.utils import get_relative_path, monitor_file
 from loguru import logger
@@ -11,6 +14,7 @@ from modules.osd import OSD
 from modules.panel.main import Panel
 from modules.switcher import ApplicationSwitcher
 from modules.widget import Deskwidgets
+from utils.monitors import HyprlandWithMonitors
 
 # from modules.corners import Corners
 
@@ -32,9 +36,16 @@ if __name__ == "__main__":
     # About().toggle(None)
     config = load_config()
 
-    panel = Panel()
+    # Start the AppMenu registrar so apps can register their menus
+    from services.appmenu import get_registrar
+    get_registrar()
+
+    _hypr = HyprlandWithMonitors.get_default()
+    _main_monitor = _hypr.get_gdk_monitor_id_from_name("DP-5")
+
+    panel = Panel(monitor=_main_monitor)
     # corners = Corners()
-    dock = Dock()
+    dock = Dock(monitor=_main_monitor)
     modusnoti = ModusNoti()
     switcher = ApplicationSwitcher()
     launcher = Launcher()

@@ -7,13 +7,13 @@ from fabric.widgets.centerbox import CenterBox
 from fabric.widgets.datetime import DateTime
 from fabric.widgets.revealer import Revealer
 from fabric.widgets.svg import Svg
+from gi.repository import Gdk
 
 import config.data as data
 from modules.controlcenter.main import ModusControlCenter
 from modules.notification.notification_center import NotificationCenter
 from modules.panel.components.enhanced_system_tray import apply_enhanced_system_tray
 from modules.panel.components.indicators import (
-    BatteryIndicator,
     BluetoothIndicator,
     NetworkIndicator,
 )
@@ -31,14 +31,16 @@ apply_enhanced_system_tray()
 
 
 class Panel(Window):
-    def __init__(self, **kwargs):
+    def __init__(self, monitor=None, **kwargs):
         super().__init__(
             name="bar",
             title="modus",
             layer="top",
             anchor="left top right",
             exclusivity="auto",
+
             visible=False,
+            monitor=monitor,
         )
 
         self.launcher = kwargs.get("launcher", None)
@@ -61,6 +63,10 @@ class Panel(Window):
                 svg_file=get_relative_path("../../config/assets/icons/misc/logo.svg"),
             ),
             on_clicked=lambda *_: self.menubar.show_system_dropdown(self.imac),
+        )
+        self.imac.connect(
+            "enter-notify-event",
+            lambda *_: self.menubar.hover_system_dropdown(self.imac),
         )
 
         self.tray = SystemTray(name="system-tray", spacing=4, icon_size=20)
@@ -88,7 +94,6 @@ class Panel(Window):
             orientation="h",
             spacing=4,
             children=[
-                BatteryIndicator(),
                 NetworkIndicator(),
                 BluetoothIndicator(),
             ],
@@ -150,15 +155,18 @@ class Panel(Window):
 
         self.recording_indicator = RecordingIndicator()
 
+        self.modules_left = Box(
+            name="modules-left",
+            spacing=0,
+            children=[
+                self.imac,
+                self.menubar,
+            ],
+        )
+
         self.children = CenterBox(
             name="panel",
-            start_children=Box(
-                name="modules-left",
-                children=[
-                    self.imac,
-                    self.menubar,
-                ],
-            ),
+            start_children=self.modules_left,
             center_children=Box(
                 name="modules-center",
                 children=self.recording_indicator,
@@ -180,6 +188,11 @@ class Panel(Window):
             ),
         )
 
+        # Close any open menubar dropdown when the cursor re-enters the bar
+        # outside the menu area (right of the app menus)
+        self.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK)
+        self.connect("enter-notify-event", self.on_bar_enter)
+
         # Connect to DND state changes for notification icon
         modus_service.connect("dont-disturb-changed", self.on_dnd_changed)
 
@@ -192,6 +205,14 @@ class Panel(Window):
         self.update_notification_icon()
 
         return self.show_all()
+
+    def on_bar_enter(self, _widget, event):
+        alloc = self.modules_left.get_allocation()
+        if event.x <= alloc.x + alloc.width:
+            # Cursor is over the menu area - hover handlers manage switching
+            return False
+        self.menubar.close_open_menus()
+        return False
 
     def search_apps(self):
         self.launcher.show_launcher()

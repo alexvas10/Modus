@@ -1,0 +1,97 @@
+/* Launchpad-style fullscreen app grid (SUPER+SPACE default view) */
+
+#launcher.launchpad-mode {
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+#launchpad-search-wrap {
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 6px 16px;
+  margin-top: 48px;
+  min-width: 280px;
+}
+
+#launchpad-search {
+  font-weight: 400;
+  font-size: 15px;
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.95);
+  border: none;
+  border-radius: 0;
+  padding: 4px 0;
+  margin: 0;
+}
+
+#launchpad-search:focus {
+  background-color: transparent;
+  box-shadow: none;
+  border: none;
+}
+
+#launchpad-search selection {
+  color: white;
+  background-color: rgba(0, 122, 255, 0.8);
+}
+
+#launchpad-grid {
+  background: transparent;
+  margin: 24px 40px;
+}
+
+#launchpad-page {
+  background: transparent;
+}
+
+#launchpad-grid-item {
+  border-radius: 16px;
+  padding: 12px;
+  margin: 4px;
+  transition: background-color 0.15s ease;
+  background: transparent;
+}
+
+#launchpad-grid-item:hover,
+#launchpad-grid-item.selected {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+#grid-item-icon {
+  min-width: 96px;
+  min-height: 96px;
+  border-radius: 22px;
+}
+
+#grid-item-label {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: 6px;
+}
+
+#launchpad-dots {
+  margin-bottom: 32px;
+  margin-top: 12px;
+}
+
+#launchpad-dot {
+  min-width: 8px;
+  min-height: 8px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.3);
+  margin: 0 4px;
+  transition: background-color 0.15s ease;
+}
+
+#launchpad-dot:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+#launchpad-dot.active {
+  background-color: rgba(255, 255, 255, 0.9);
+}

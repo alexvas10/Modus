@@ -1,6 +1,6 @@
 .title {
   font-size: 16px;
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
   font-weight: bold;
 }
 #control-center-menu {
@@ -964,7 +964,7 @@
   /* margin-top: -14px; */
   /* margin-left: 5px; */
   font-size: 13px;
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
   font-weight: bold;
 }
 .status-label {
@@ -973,7 +973,7 @@
   color: #aaa;
   /* margin-top: -28px; */
   /* margin-left: 5px; */
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
   /* font-weight: bold; */
   /* margin-bottom: 2px; */
 }

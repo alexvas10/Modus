@@ -5,6 +5,7 @@ from gi.repository import Gdk, GLib
 from fabric.core.service import Property
 from fabric.widgets.box import Box
 from fabric.widgets.entry import Entry
+from modules.launcher.launchpad_grid import LaunchpadGrid
 from modules.launcher.plugin_manager import PluginManager
 from modules.launcher.result import Result
 from modules.launcher.result_item import ResultItem
@@ -21,6 +22,8 @@ DEFAULT_ITEM_HEIGHT = 68
 PAGE_NAVIGATION_STEP = 5
 LAUNCHER_WIDTH = 640
 LAUNCHER_HEIGHT = 400
+GRID_COLUMNS = 7
+GRID_ROWS = 5
 
 
 class Launcher(Window):
@@ -48,6 +51,7 @@ class Launcher(Window):
         self._initializing = True
         self._auto_adding_space = False
         self._processing_backspace = False
+        self._closing = False
         self.plugin_manager = PluginManager()
         self.trigger_config = TriggerConfig()
 
@@ -76,14 +80,14 @@ class Launcher(Window):
         self._mouse_interaction_delay = 500  # 500ms delay after opening
 
         # Setup UI
-        main_box = Box(
+        self.main_box = Box(
             name="launcher",
             orientation="v",
             spacing=0,
             h_align="center",
             v_align="center",
         )
-        self.add(main_box)
+        self.add(self.main_box)
 
         # Search entry with Spotlight-style large text
         self.search_entry = Entry(
@@ -105,7 +109,19 @@ class Launcher(Window):
             ],
         )
 
-        main_box.add(self.header_box)
+        self.main_box.add(self.header_box)
+
+        # Pill-shaped search wrapper used only in Launchpad grid mode; the
+        # search_entry widget is moved here (out of header_box) when the
+        # grid is shown, and moved back when a trigger plugin takes over.
+        self.launchpad_search_wrap = Box(
+            name="launchpad-search-wrap",
+            orientation="h",
+            h_align="center",
+            v_align="center",
+            visible=False,
+        )
+        self.main_box.add(self.launchpad_search_wrap)
 
         self.results_scroll = ScrolledWindow(
             name="launcher-results-scroll",
@@ -122,7 +138,26 @@ class Launcher(Window):
             spacing=0,
         )
         self.results_scroll.add(self.results_box)
-        main_box.add(self.results_scroll)
+        self.main_box.add(self.results_scroll)
+
+        # Launchpad-style fullscreen app grid (sibling to results_scroll;
+        # only one of the two is ever visible at a time)
+        self.grid_container = LaunchpadGrid(
+            columns=GRID_COLUMNS,
+            rows=GRID_ROWS,
+            h_expand=True,
+            v_expand=True,
+            visible=False,
+        )
+        self.grid_container.item_clicked.connect(
+            lambda _, idx: self._on_result_clicked(None, idx)
+        )
+        self.grid_container.item_hovered.connect(
+            lambda _, idx: self._on_result_hovered(idx)
+        )
+        self.main_box.add(self.grid_container)
+
+        self.grid_mode_active = False
 
         # Keep the results container visible initially
 
@@ -169,6 +204,11 @@ class Launcher(Window):
         if external and trigger_keyword:
             # Execute command externally without showing launcher
             return self._execute_external_command(trigger_keyword)
+
+        # Toggle off on a second plain press while already open
+        if self.visible and not trigger_keyword:
+            self.close_launcher()
+            return
 
         self.show_all()
 
@@ -271,6 +311,8 @@ class Launcher(Window):
 
     def close_launcher(self):
         """Hide the launcher and clear search."""
+        self._closing = True
+        self._set_grid_mode(False)
         self.hide()
         self.search_entry.set_text("")
         self._clear_results()
@@ -278,11 +320,87 @@ class Launcher(Window):
         self.active_trigger = ""
         self.visible = False
         self.opened_with_trigger = False
+        self._closing = False
+
+    def _should_use_grid_mode(self) -> bool:
+        """
+        Decide whether the current results should render as the fullscreen
+        Launchpad-style grid (plain application search) or the compact
+        centered Spotlight-style list (any trigger plugin, trigger
+        suggestions, or custom-widget results like network password entry).
+        """
+        if self.triggered_plugin or self.active_trigger:
+            return False
+
+        for result in self.results:
+            if result.custom_widget:
+                return False
+            if result.plugin_name and result.plugin_name != "Applications":
+                return False
+
+        return True
+
+    def _set_grid_mode(self, enabled: bool):
+        """Switch between the Launchpad grid and the Spotlight-style list."""
+        if enabled == self.grid_mode_active:
+            return
+
+        if enabled:
+            self.results_scroll.hide()
+
+            self.header_box.hide()
+            header_children = self.header_box.get_children()
+            if self.search_entry in header_children:
+                self.header_box.remove(self.search_entry)
+            self.search_entry.set_name("launchpad-search")
+            self.launchpad_search_wrap.add(self.search_entry)
+            self.launchpad_search_wrap.show_all()
+
+            self.main_box.add_style_class("launchpad-mode")
+            self.main_box.h_align = "fill"
+            self.main_box.v_align = "fill"
+            self.main_box.h_expand = True
+            self.main_box.v_expand = True
+
+            self.anchor = "top right bottom left"
+            self.queue_resize()
+
+            self.grid_container.show()
+            self.grid_container.show_all()
+        else:
+            self.grid_container.hide()
+
+            wrap_children = self.launchpad_search_wrap.get_children()
+            if self.search_entry in wrap_children:
+                self.launchpad_search_wrap.remove(self.search_entry)
+            self.search_entry.set_name("launcher-search")
+            self.header_box.add(self.search_entry)
+            self.header_box.show_all()
+            self.launchpad_search_wrap.hide()
+
+            self.main_box.remove_style_class("launchpad-mode")
+            self.main_box.h_align = "center"
+            self.main_box.v_align = "center"
+            self.main_box.h_expand = False
+            self.main_box.v_expand = False
+
+            self.anchor = ""
+            self.queue_resize()
+
+            self.results_scroll.show()
+
+        self.grid_mode_active = enabled
 
     def _on_search_changed(self, entry):
         """Handle search text changes."""
         # Skip if still initializing
         if getattr(self, "_initializing", True):
+            return
+
+        # Skip while closing to avoid re-entering the search pipeline (which
+        # would flip grid mode back on and re-hide the list-mode widgets,
+        # desyncing grid_mode_active from actual widget visibility)
+        if getattr(self, "_closing", False):
             return
 
         # Skip if we're automatically adding a space to prevent recursion
@@ -346,10 +464,11 @@ class Launcher(Window):
             applications_plugin = self._get_applications_plugin()
             if applications_plugin:
                 try:
-                    # Query with empty string to get popular/frequently used applications
+                    # Query with empty string to get all applications - the
+                    # Launchpad-style grid paginates these rather than
+                    # truncating them like the list view does.
                     all_results = applications_plugin.query("")
-                    # Limit to max_results for empty query
-                    self.results = all_results[: self.max_results]
+                    self.results = all_results
                     self.selected_index = 0
                     self._update_results_display()
                 except Exception as e:
@@ -718,6 +837,12 @@ class Launcher(Window):
         # Update input field with trigger indication (Spotlight-style)
         self._update_input_action_text()
 
+        self._set_grid_mode(self._should_use_grid_mode())
+
+        if self.grid_mode_active:
+            self.grid_container.set_results(self.results, self.selected_index)
+            return
+
         # Clear existing results
         for child in self.results_box.get_children():
             self.results_box.remove(child)
@@ -923,6 +1048,27 @@ class Launcher(Window):
                 self.focus_mode = "results"
                 self.selected_index = 0
                 self._update_selection()
+            return True
+
+        # Left/Right - page navigation in the Launchpad grid (no-op otherwise,
+        # matching the pre-existing unused behavior of these keys)
+        if keyval == Gdk.KEY_Left:
+            if self.grid_mode_active and self.grid_container.total_pages > 1:
+                self.grid_container.go_to_page(self.grid_container.current_page - 1)
+                self.selected_index = self.grid_container.current_page * (
+                    GRID_COLUMNS * GRID_ROWS
+                )
+                self.grid_container.set_selected_index(self.selected_index)
+            return True
+
+        if keyval == Gdk.KEY_Right:
+            if self.grid_mode_active and self.grid_container.total_pages > 1:
+                self.grid_container.go_to_page(self.grid_container.current_page + 1)
+                self.selected_index = min(
+                    len(self.results) - 1,
+                    self.grid_container.current_page * (GRID_COLUMNS * GRID_ROWS),
+                )
+                self.grid_container.set_selected_index(self.selected_index)
             return True
 
         # Enter - activate selected result
@@ -1135,6 +1281,10 @@ class Launcher(Window):
 
     def _update_selection(self):
         """Update the visual selection of results with scrolling (for keyboard navigation)."""
+        if self.grid_mode_active:
+            self.grid_container.set_selected_index(self.selected_index)
+            return
+
         children = self.results_box.get_children()
         selected_widget = None
 
@@ -1163,6 +1313,10 @@ class Launcher(Window):
 
     def _update_selection_visual_only(self):
         """Update the visual selection of results without scrolling (for mouse hover)."""
+        if self.grid_mode_active:
+            self.grid_container.set_selected_index(self.selected_index)
+            return
+
         children = self.results_box.get_children()
 
         for i, child in enumerate(children):
