@@ -886,7 +886,7 @@ class DockCanvas(Gtk.DrawingArea):
 
     def _handle_home_click(self) -> None:
         """Open the home directory in superfile."""
-        terminal = config.get("terminal_command", "kitty -e")
+        terminal = config().get("terminal_command", "kitty -e")
         try:
             subprocess.Popen(
                 [*terminal.split(), "spf", os.path.expanduser("~")],

@@ -114,7 +114,7 @@ def main():
     # Pin the panel and dock to a single output. `panel_monitor` is a plug name
     # such as "DP-5"; unset (or unmatched) falls back to the default monitor.
     primary_monitor = None
-    monitor_name = config.get("panel_monitor", "DP-5")
+    monitor_name = config().get("panel_monitor", "DP-5")
     if monitor_name:
         try:
             primary_monitor = HyprlandWithMonitors.get_default(
