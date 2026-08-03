@@ -1,5 +1,6 @@
 #panel {
-    background-color: @glass-panel;
+    /* macOS Tahoe style: fully transparent menu bar */
+    background-color: transparent;
     margin: -4px 0;
     transition: all 120ms ease-in-out;
 }

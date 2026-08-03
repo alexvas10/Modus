@@ -16,21 +16,21 @@
     font-size: 38px;
     font-weight: 800;
     color: @glass-text;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
 }
 
 #pomodoro-cycle {
     font-size: 13px;
     font-weight: 500;
     color: @glass-text-secondary;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
 }
 
 #pomodoro-title {
     font-size: 14px;
     font-weight: 700;
     color: @glass-text;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
 }
 
 /* Base progress bar color */

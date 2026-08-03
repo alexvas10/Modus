@@ -23,7 +23,7 @@ from window.panel.notch import Notch
 
 
 class Panel(Window):
-    def __init__(self, **kwargs):
+    def __init__(self, monitor=None, **kwargs):
         super().__init__(
             title="mdous-bar",
             name="bar",
@@ -32,6 +32,7 @@ class Panel(Window):
             exclusivity="auto",
             visible=False,
             all_visible=False,
+            **({"monitor": monitor} if monitor is not None else {}),
         )
 
         # Deferred from module import: patches SystemTrayItem before any tray

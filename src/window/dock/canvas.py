@@ -1,4 +1,5 @@
 import math
+import subprocess
 import time
 from typing import Dict, List, Optional, Tuple
 
@@ -83,6 +84,8 @@ class DockCanvas(Gtk.DrawingArea):
         self._modus_ws_handler: int | None = None
 
         self._desktop_apps: list = []
+        self._home_pixbuf: Optional[GdkPixbuf.Pixbuf] = None
+        self._cached_home_size: int = 0
         self._trash_pixbuf: Optional[GdkPixbuf.Pixbuf] = None
         self._cached_trash_full: Optional[bool] = None
         self._cached_trash_size: int = 0
@@ -296,6 +299,7 @@ class DockCanvas(Gtk.DrawingArea):
             item.current_scale = old_scales.get(key, MIN_SCALE)
             new_items.append(item)
 
+        self._update_home_item(new_items, old_scales, size)
         self._update_trash_item(new_items, old_scales, size)
 
         for client in active_clients.values():
@@ -352,6 +356,32 @@ class DockCanvas(Gtk.DrawingArea):
         self.model.items = new_items
         self._needs_redraw = True
         self.animator.start()
+
+    def _update_home_item(
+        self,
+        new_items: List[DockItem],
+        old_scales: Dict[str, float],
+        size: int,
+    ) -> None:
+        if self._home_pixbuf is None or size != self._cached_home_size:
+            self._cached_home_size = size
+            self._home_pixbuf = self._get_pixbuf("folder", size)
+
+        existing = self.model.get_by_id("home")
+        if existing and existing.is_home:
+            item = existing
+            item.pixbuf = self._home_pixbuf
+        else:
+            item = DockItem(
+                app_id="home",
+                app_data="home",
+                is_pinned=True,
+                is_home=True,
+                pixbuf=self._home_pixbuf,
+                tooltip="Home",
+            )
+        item.current_scale = old_scales.get("home", MIN_SCALE)
+        new_items.append(item)
 
     def _update_trash_item(
         self,
@@ -763,6 +793,11 @@ class DockCanvas(Gtk.DrawingArea):
         self._mouse_x = -9999.0
         self._mouse_y = -9999.0
 
+        if item.is_home:
+            if event.button == 1:
+                self._handle_home_click()
+            return True
+
         if item.is_trash:
             if event.button == 1:
                 self._handle_trash_click()
@@ -848,6 +883,17 @@ class DockCanvas(Gtk.DrawingArea):
                 f"[canvas] trash_path = os.path.expanduser('~/.local/share/Trash/fil... failed: {e}"
             )
             return False
+
+    def _handle_home_click(self) -> None:
+        """Open the home directory in superfile."""
+        terminal = config.get("terminal_command", "kitty -e")
+        try:
+            subprocess.Popen(
+                [*terminal.split(), "spf", os.path.expanduser("~")],
+                start_new_session=True,
+            )
+        except Exception as e:
+            logger.error(f"[dock] Error opening home folder: {e}")
 
     def _handle_trash_click(self) -> None:
         open_trash()

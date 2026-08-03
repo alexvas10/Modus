@@ -138,7 +138,7 @@
 
 .title-widget {
   font-size: apply(font-md);
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
   font-weight: bold;
 }
 
@@ -146,7 +146,7 @@
   font-size: apply(font-xs);
   font-weight: 500;
   color: @glass-text-secondary;
-  font-family: "SF Pro Rounded";
+  font-family: "SF Pro Text";
 }
 
 #app-control-box {

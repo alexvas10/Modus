@@ -11,13 +11,14 @@ from .canvas import DockCanvas
 
 
 class Dock(Window):
-    def __init__(self):
+    def __init__(self, monitor=None):
         super().__init__(
             layer="top",
             anchor="bottom center",
             exclusivity="none",
             title="modus-dock",
             name="dock",
+            **({"monitor": monitor} if monitor is not None else {}),
         )
 
         screen = self.get_screen()

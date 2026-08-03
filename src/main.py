@@ -23,6 +23,7 @@ from shared.data import APP_NAME, load_config
 from shared.dialogs.sysauth_dialog import connect_sysauth_service
 from utils.functions import set_process_name
 from utils.gtk_utils import generate_colors_from_wallpaper
+from utils.monitors import HyprlandWithMonitors
 from window.dock import Dock
 from window.lock import LockScreenWrapper
 from window.notification.notification import ModusNoti
@@ -110,12 +111,25 @@ def main():
     sysauth.start()
     connect_sysauth_service(sysauth)
 
+    # Pin the panel and dock to a single output. `panel_monitor` is a plug name
+    # such as "DP-5"; unset (or unmatched) falls back to the default monitor.
+    primary_monitor = None
+    monitor_name = config.get("panel_monitor", "DP-5")
+    if monitor_name:
+        try:
+            primary_monitor = HyprlandWithMonitors.get_default(
+            ).get_gdk_monitor_id_from_name(monitor_name)
+        except Exception as e:
+            logger.warning(f"[main] monitor lookup for {monitor_name!r} failed: {e}")
+        if primary_monitor is None:
+            logger.warning(f"[main] monitor {monitor_name!r} not found; using default")
+
     switcher = ApplicationSwitcher()
-    panel = Panel()
+    panel = Panel(monitor=primary_monitor)
     modusnoti = ModusNoti()
     spotlight = SpotlightWindow()
     panel.set_spotlight_toggle(spotlight.toggle)
-    dock = Dock()
+    dock = Dock(monitor=primary_monitor)
     osd = OSDWindow()
     screencapture = ScreenCaptureWindow()
 

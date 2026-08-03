@@ -15,6 +15,7 @@ from utils.app_name_resolver import format_window
 from utils.gtk_utils import setup_cursor_hover
 from utils.roam import modus_service
 from window.globalmenu.service import get_global_menu_service
+from window.panel.components.fallback_menu import FallbackMenuBuilder
 from window.settings.main import get_settings_window
 
 
@@ -324,6 +325,8 @@ class GlobalMenuDropdowns:
         self._gtk_menu_buttons: list[Gtk.MenuButton] = []
         self._gtk_menus: list[Gtk.Menu] = []
 
+        self._fallback_builder = FallbackMenuBuilder()
+
         self._system_dropdown = ModusDropdown(items=_create_system_menu())
         self._system_menu = self._system_dropdown.menu
 
@@ -367,6 +370,18 @@ class GlobalMenuDropdowns:
         self._system_menu.show_all()
         button.set_popup(self._system_menu)
 
+        # Open on hover, matching the macOS menu-bar feel. set_imac_button can
+        # be called more than once, so only connect the handler the first time.
+        if not getattr(button, "_hover_open_connected", False):
+            button.connect("enter-notify-event", self._on_imac_hover)
+            button._hover_open_connected = True
+
+    @staticmethod
+    def _on_imac_hover(button, _event):
+        if not button.get_active():
+            button.set_active(True)
+        return False
+
     def _make_click_handler(self, _, item_id):
         if self._global_menu_svc:
             self._global_menu_svc.click_item(item_id)
@@ -409,6 +424,23 @@ class GlobalMenuDropdowns:
         self._destroy_widgets(self._gtk_menus)
         self._gtk_menus.clear()
 
+    def _build_fallback_buttons(self) -> list:
+        """Synthesized menus for apps that export nothing over DBus."""
+        if not has_active_window():
+            return []
+
+        wm_class = getattr(modus_service, "current_active_wm_class", "")
+        buttons = self._fallback_builder.build_buttons(wm_class)
+
+        # Track the popups so _cleanup_dynamic tears them down with the rest.
+        for button in buttons:
+            menu = button.get_popup()
+            if menu is not None:
+                self._gtk_menus.append(menu)
+            self._gtk_menu_buttons.append(button)
+
+        return buttons
+
     def _rebuild_dynamic_menus(self, menu_items: list):
         logger.info(f"[GlobalMenu] _rebuild_dynamic_menus: {len(menu_items)} items")
 
@@ -419,7 +451,12 @@ class GlobalMenuDropdowns:
         ]
 
         if not top_level:
-            self.all_menu_buttons = [self.global_menu_button_title]
+            # App exports no menu — synthesize one from its category so the
+            # bar still offers File/Edit/View/Go instead of a bare title.
+            self.all_menu_buttons = [
+                self.global_menu_button_title,
+                *self._build_fallback_buttons(),
+            ]
         else:
             new_buttons = [self.global_menu_button_title]
 

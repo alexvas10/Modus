@@ -22,13 +22,13 @@
     font-size: 16px;
     font-weight: 700;
     color: @glass-text;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
 }
 
 #todo-stats {
     font-size: 12px;
     color: @glass-text-secondary;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
 }
 
 /* === Add Task Section === */
@@ -43,7 +43,7 @@
     border: none;
     color: @glass-text;
     font-size: 13px;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
     min-height: 24px;
 }
 
@@ -112,7 +112,7 @@
     font-size: 14px;
     font-weight: 500;
     color: @glass-text;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
 }
 
 /* === Options Button === */
@@ -155,7 +155,7 @@
 #todo-footer {
     font-size: 11px;
     color: @glass-text-secondary;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
     margin-top: 4px;
 }
 
@@ -177,13 +177,13 @@
     font-size: 14px;
     font-weight: 700;
     color: @glass-text;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
 }
 
 #todo-opt-subtitle {
     font-size: 11px;
     color: @glass-text-secondary;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
 }
 
 /* === Color Swatches === */
@@ -216,7 +216,7 @@
 #todo-deadline-value {
     font-size: 12px;
     color: @glass-text;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
     min-width: 70px;
 }
 
@@ -245,7 +245,7 @@
 #todo-spin-value {
     font-size: 12px;
     color: @glass-text;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
 }
 
 /* === Preset Buttons === */
@@ -255,7 +255,7 @@
     padding: 6px 12px;
     font-size: 11px;
     color: @glass-text;
-    font-family: "SF Pro Rounded";
+    font-family: "SF Pro Text";
 }
 
 #todo-preset-btn:hover {

@@ -12,6 +12,7 @@ class DockItem:
     app_data: object
     is_pinned: bool = False
     is_trash: bool = False
+    is_home: bool = False
 
     is_running: bool = False
     instance_address: Optional[str] = None
