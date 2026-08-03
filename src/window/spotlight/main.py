@@ -19,6 +19,7 @@ from window.spotlight.core.loader import PluginLoader
 from window.spotlight.core.manager import PluginManager
 from window.spotlight.core.registry import PluginRegistry
 from window.spotlight.core.search import SearchPipeline
+from window.spotlight.launchpad_grid import LaunchpadGrid
 
 
 class PluginService:
@@ -60,6 +61,20 @@ class Spotlight(Box):
         self.viewport = Box(spacing=4, orientation="v")
         self.max_children = 4
 
+        # Launchpad grid. Result widgets are still built into the viewport in
+        # grid mode, so selection/submit keep working off the same indices —
+        # the grid only mirrors the selection.
+        self.grid_mode_active = False
+        self.grid_container = LaunchpadGrid(visible=False)
+        self.grid_container.item_clicked.connect(
+            lambda _, idx: self._activate_grid_index(idx)
+        )
+        self.grid_container.item_hovered.connect(
+            lambda _, idx: self.set_selected_index(idx)
+        )
+        # Set by SpotlightWindow so grid mode can resize the window.
+        self._window = None
+
         self.plugin_service = PluginService()
 
         self.header_icon = Image(
@@ -96,7 +111,7 @@ class Spotlight(Box):
         )
         self.scrolled_window.connect("unmap", lambda: self.scrolled_clip.hide())
 
-        self.children = self.header, self.scrolled_clip
+        self.children = self.header, self.scrolled_clip, self.grid_container
 
     # Search
     @debounce(300)
@@ -252,6 +267,10 @@ class Spotlight(Box):
 
         self._current_results = results
 
+        self._set_grid_mode(self._should_use_grid_mode(results))
+        if self.grid_mode_active:
+            self.grid_container.set_results(results, max(self._selected_index, 0))
+
         if not results:
             self._auto_stop_refresh_timer()
             self._post_arrange()
@@ -259,6 +278,43 @@ class Spotlight(Box):
 
         self._auto_start_refresh_timer(results)
         self._post_arrange()
+
+    # Launchpad grid mode
+    def _should_use_grid_mode(self, results: list[SearchResult]) -> bool:
+        """Plain application search renders as the fullscreen Launchpad grid.
+
+        Anything else — an active keyword plugin, or results from any other
+        plugin — stays in the compact Spotlight list.
+        """
+        if not results or self._active_plugin_entry:
+            return False
+
+        return all(r.render_type == "app" for r in results)
+
+    def _set_grid_mode(self, enabled: bool):
+        if enabled == self.grid_mode_active:
+            return
+
+        if enabled:
+            self.scrolled_clip.hide()
+            self.scrolled_window.hide()
+            self.add_style_class("launchpad-mode")
+            self.grid_container.show_all()
+            if self._window is not None:
+                self._window.anchor = "top right bottom left"
+                self._window.margin = "0px"
+        else:
+            self.grid_container.hide()
+            self.remove_style_class("launchpad-mode")
+            if self._window is not None:
+                self._window.anchor = "top"
+                self._window.margin = "80px 0px 0px 0px"
+
+        self.grid_mode_active = enabled
+
+    def _activate_grid_index(self, index: int):
+        if 0 <= index < len(self._current_results):
+            self._activate_result(self._current_results[index])
 
     def _remove_result_widget(self, result_id: str):
         widget = self._result_widgets.pop(result_id, None)
@@ -609,6 +665,10 @@ class Spotlight(Box):
         selected = children[self._selected_index]
         selected.add_style_class("selected")
 
+        if self.grid_mode_active:
+            self.grid_container.set_selected_index(self._selected_index)
+            return
+
         adj = self.scrolled_window.get_vadjustment()
         alloc = selected.get_allocation()
         res = selected.translate_coordinates(self.viewport, 0, 0)
@@ -691,6 +751,9 @@ class SpotlightWindow(Window):
             **kwargs,
         )
 
+        # Lets grid mode drive the window geometry.
+        self.spotlight_box._window = self
+
         self.build()
         self.add_keybinding("Escape", lambda *_: self.close_spotlight())
 
@@ -709,6 +772,8 @@ class SpotlightWindow(Window):
             self.spotlight_box._debounce_timer_on_entry_changed = 0
 
         self.spotlight_box._clear_viewport()
+        # Drop back to the compact list so the next open is not fullscreen.
+        self.spotlight_box._set_grid_mode(False)
         self.spotlight_box.scrolled_window.animate_size(0)
         self.spotlight_box.scrolled_window.hide()
         self.spotlight_box.scrolled_clip.hide()
